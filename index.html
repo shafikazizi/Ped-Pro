@@ -306,17 +306,27 @@
         window.dataKeluar = [];
         window.currentUser = null;
         
-        // Environment Config
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // Environment Config Safely
+        let firebaseConfig = {};
+        try {
+            if (typeof __firebase_config !== 'undefined') {
+                firebaseConfig = typeof __firebase_config === 'string' ? JSON.parse(__firebase_config) : __firebase_config;
+            }
+        } catch(e) {
+            console.error("Ralat parse config:", e);
+        }
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'ped-system-default';
         document.getElementById('app-id-display').innerText = appId;
 
-        // Initialize Firebase
+        // Initialize Firebase Safely
         let app, auth, db;
         try {
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
+            if(Object.keys(firebaseConfig).length > 0) {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            }
         } catch(e) {
             console.error("Firebase init failed", e);
         }
@@ -358,6 +368,9 @@
                     }
                 } catch (err) {
                     console.error("Auth Error:", err);
+                    document.getElementById('user-id').innerText = "Ralat Keselamatan";
+                    document.getElementById('user-id').nextElementSibling.innerHTML = `<span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1"></span> Akses Disekat`;
+                    window.showToast("Pengesahan gagal. Pastikan browser tidak menyekat 'Third-party cookies'.", "error");
                 }
             };
             initAuth();
@@ -366,10 +379,17 @@
                 if (user) {
                     window.currentUser = user;
                     document.getElementById('user-id').innerText = `ID: ${user.uid.substring(0,8)}...`;
+                    document.getElementById('user-id').nextElementSibling.innerHTML = `<span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span> Terhubung`;
                     document.getElementById('user-avatar').innerText = user.uid.substring(0, 2).toUpperCase();
                     setupFirestoreListeners(user);
                 }
             });
+        } else {
+            document.getElementById('user-id').innerText = "Mod Lokal";
+            document.getElementById('user-id').nextElementSibling.innerHTML = `<span class="w-1.5 h-1.5 bg-amber-500 rounded-full mr-1"></span> Luar Talian`;
+            setTimeout(() => {
+                window.showToast("Anda membuka fail ini secara lokal. Fungsi pangkalan data ke awan dimatikan.", "error");
+            }, 1500);
         }
 
         // Setup Listeners
@@ -580,8 +600,13 @@
         document.getElementById('add-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            if(!db) {
+                window.showToast("Pangkalan data tidak aktif. Anda perlu guna platform ini (Preview) untuk menyimpan data.", "error");
+                return;
+            }
+            
             if(!window.currentUser) {
-                window.showToast("Sistem sedang mengesahkan pengguna atau ralat rangkaian berlaku. Sila tunggu.", "error");
+                window.showToast("Sistem sedang mengesahkan keselamatan pengguna. Sila tunggu sebentar...", "error");
                 return;
             }
 
