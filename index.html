@@ -100,6 +100,7 @@
 
         <!-- View: Dashboard -->
         <div id="view-dashboard" class="space-y-6">
+            <!-- Kad Statistik Utama -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
                     <div class="p-3 rounded-xl bg-blue-50 text-blue-600"><i data-lucide="mail-warning"></i></div>
@@ -131,8 +132,32 @@
                 </div>
             </div>
 
+            <!-- Rumusan Tambahan (Sektor & Status) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Rumusan Mengikut Sektor -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 lg:col-span-2 shadow-sm">
+                    <h4 class="font-bold text-slate-800 mb-6 flex items-center">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5 mr-2 text-blue-500"></i> Agihan Surat Masuk Mengikut Sektor
+                    </h4>
+                    <div id="chart-sektor" class="space-y-5">
+                        <p class="text-sm text-slate-400">Memuatkan data rumusan...</p>
+                    </div>
+                </div>
+                
+                <!-- Rumusan Status Keseluruhan -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                    <h4 class="font-bold text-slate-800 mb-6 flex items-center">
+                        <i data-lucide="pie-chart" class="w-5 h-5 mr-2 text-purple-500"></i> Status Tindakan Pejabat
+                    </h4>
+                    <div id="chart-status" class="space-y-4">
+                        <p class="text-sm text-slate-400">Memuatkan data rumusan...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aktiviti Terkini -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-2xl border border-slate-100">
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <h4 class="font-bold text-slate-800 mb-4 flex items-center">
                         <i data-lucide="clock" class="w-4 h-4 mr-2 text-amber-500"></i> Baru Diterima
                     </h4>
@@ -140,7 +165,7 @@
                         <p class="text-sm text-slate-400">Memuatkan data...</p>
                     </div>
                 </div>
-                <div class="bg-white p-6 rounded-2xl border border-slate-100">
+                <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <h4 class="font-bold text-slate-800 mb-4 flex items-center">
                         <i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-green-500"></i> Aktiviti Keluar
                     </h4>
@@ -262,7 +287,7 @@
         </div>
     </div>
 
-    <!-- Toast Notification (Added for feedback) -->
+    <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-4 right-4 z-[200] transform transition-all duration-300 translate-y-20 opacity-0 flex items-center space-x-3 px-4 py-3 rounded-xl shadow-2xl text-white font-semibold text-sm">
         <i id="toast-icon" data-lucide="info" class="w-5 h-5"></i>
         <span id="toast-message">Mesej</span>
@@ -390,6 +415,7 @@
         }
 
         function updateDashboard() {
+            // 1. Update Kad Statistik Atas
             document.getElementById('stat-jabatan').innerText = window.dataJabatan.length;
             document.getElementById('stat-sekolah').innerText = window.dataSekolah.length;
             document.getElementById('stat-keluar').innerText = window.dataKeluar.length;
@@ -397,30 +423,106 @@
             const urgentCount = window.dataJabatan.filter(d => d.status === 'Belum diminit').length;
             document.getElementById('stat-urgent').innerText = urgentCount;
 
-            // Recent Masuk
+            // --- PENGKIRAAN RUMUSAN ---
+            const allMasuk = [...window.dataJabatan, ...window.dataSekolah];
+            const allDocs = [...allMasuk, ...window.dataKeluar];
+            
+            // 2. Rumusan Mengikut Sektor (Surat Masuk)
+            const chartSektorContainer = document.getElementById('chart-sektor');
+            if (allMasuk.length === 0) {
+                chartSektorContainer.innerHTML = '<p class="text-sm text-slate-400">Belum ada surat masuk direkodkan.</p>';
+            } else {
+                const sektorCounts = {};
+                allMasuk.forEach(d => {
+                    const s = d.sektor || 'Tiada Sektor';
+                    sektorCounts[s] = (sektorCounts[s] || 0) + 1;
+                });
+
+                const sortedSektors = Object.keys(sektorCounts).sort((a,b) => sektorCounts[b] - sektorCounts[a]);
+                const maxVal = Math.max(...Object.values(sektorCounts), 1); // Avoid div by 0
+
+                chartSektorContainer.innerHTML = sortedSektors.map(sektor => {
+                    const count = sektorCounts[sektor];
+                    const percentage = Math.round((count / maxVal) * 100);
+                    return `
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1">
+                                <span class="text-slate-700">${sektor}</span>
+                                <span class="text-blue-600">${count} Surat</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-2.5">
+                                <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-1000 ease-out" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 3. Rumusan Status Keseluruhan (Semua Surat)
+            const chartStatusContainer = document.getElementById('chart-status');
+            if (allDocs.length === 0) {
+                chartStatusContainer.innerHTML = '<p class="text-sm text-slate-400">Belum ada rekod.</p>';
+            } else {
+                const statusCounts = { 'Selesai': 0, 'Dihantar': 0, 'Dalam proses': 0, 'Belum diminit': 0, 'Sudah diminit': 0 };
+                allDocs.forEach(d => {
+                    const st = d.status || 'Belum diminit';
+                    if(statusCounts[st] !== undefined) statusCounts[st]++;
+                });
+
+                const totalDocs = allDocs.length;
+                const statusColors = {
+                    'Selesai': 'bg-green-500', 'Dihantar': 'bg-purple-500', 
+                    'Dalam proses': 'bg-amber-500', 'Sudah diminit': 'bg-blue-500', 
+                    'Belum diminit': 'bg-red-500'
+                };
+
+                chartStatusContainer.innerHTML = Object.keys(statusCounts).map(status => {
+                    const count = statusCounts[status];
+                    if(count === 0) return ''; // Hide empty statuses
+                    const pct = Math.round((count / totalDocs) * 100);
+                    const color = statusColors[status] || 'bg-gray-500';
+                    return `
+                        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 rounded-full ${color}"></div>
+                                <span class="text-sm font-semibold text-slate-700">${status}</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-sm font-black text-slate-800">${count}</span>
+                                <span class="text-xs text-slate-400 ml-1">(${pct}%)</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // 4. Recent Masuk
             const recentMasukContainer = document.getElementById('recent-masuk');
             const masukData = [...window.dataJabatan, ...window.dataSekolah]
                                 .sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-                                .slice(0, 5);
+                                .slice(0, 4);
             
             recentMasukContainer.innerHTML = masukData.map(item => `
                 <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <p class="text-[10px] text-slate-400 font-bold">${item.noRujukan || '-'}</p>
+                    <div class="flex justify-between items-start mb-1">
+                        <p class="text-[10px] text-blue-600 font-bold">${item.noRujukan || '-'}</p>
+                        <span class="text-[9px] text-slate-400">${item.tarikh}</span>
+                    </div>
                     <p class="text-xs font-semibold text-slate-700 line-clamp-1">${item.perkara}</p>
                 </div>
             `).join('') || '<p class="text-sm text-slate-400">Tiada data terkini</p>';
 
-            // Recent Keluar
+            // 5. Recent Keluar
             const recentKeluarContainer = document.getElementById('recent-keluar');
             const keluarData = [...window.dataKeluar]
                                 .sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
                                 .slice(0, 5);
 
             recentKeluarContainer.innerHTML = keluarData.map(item => `
-                <div class="flex items-center space-x-3 text-xs">
-                    <div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                    <span class="text-slate-500 min-w-[70px]">${item.tarikh}</span>
-                    <span class="font-medium text-slate-700 line-clamp-1">${item.perkara}</span>
+                <div class="flex items-center space-x-3 text-xs py-2 border-b border-slate-50 last:border-0">
+                    <div class="w-2 h-2 rounded-full bg-green-400 flex-shrink-0"></div>
+                    <span class="text-slate-500 font-medium min-w-[70px]">${item.tarikh}</span>
+                    <span class="font-semibold text-slate-700 line-clamp-1">${item.perkara}</span>
                 </div>
             `).join('') || '<p class="text-sm text-slate-400">Tiada aktiviti keluar</p>';
         }
