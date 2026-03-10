@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Pengurusan Dokumen (PeD)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hide { display: none !important; }
+        
+        /* Modal Animation */
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .modal-animate {
+            animation: zoomIn 0.2s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 flex font-sans text-slate-900 min-h-screen overflow-x-hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 transition-all duration-300 flex flex-col fixed h-full z-50">
+        <div class="p-6 flex items-center justify-between border-b border-slate-800">
+            <div id="sidebar-logo" class="flex items-center space-x-3 transition-opacity">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <i data-lucide="file-text" class="text-white w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-white tracking-tight text-xl">Sistem PeD</span>
+            </div>
+            <button id="toggle-sidebar" class="p-1.5 hover:bg-slate-800 rounded-lg">
+                <i data-lucide="x" class="w-5 h-5" id="sidebar-icon"></i>
+            </button>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-2 mt-4 overflow-y-auto">
+            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 bg-blue-600 text-white shadow-lg shadow-blue-900/20 nav-btn">
+                <div class="flex-shrink-0"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
+                <span class="text-sm font-semibold nav-label">Dashboard</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 ml-auto opacity-50 nav-chevron"></i>
+            </button>
+            
+            <div class="nav-divider pt-4 pb-2 px-2 text-[10px] font-bold uppercase text-slate-500 tracking-widest">Surat Masuk</div>
+            
+            <button onclick="switchTab('jabatan')" id="nav-jabatan" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200 nav-btn">
+                <div class="flex-shrink-0"><i data-lucide="mail-warning" class="w-5 h-5"></i></div>
+                <span class="text-sm font-semibold nav-label">Jabatan & Agensi</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 ml-auto opacity-0 nav-chevron"></i>
+            </button>
+
+            <button onclick="switchTab('sekolah')" id="nav-sekolah" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200 nav-btn">
+                <div class="flex-shrink-0"><i data-lucide="school" class="w-5 h-5"></i></div>
+                <span class="text-sm font-semibold nav-label">Sekolah</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 ml-auto opacity-0 nav-chevron"></i>
+            </button>
+
+            <div class="nav-divider pt-4 pb-2 px-2 text-[10px] font-bold uppercase text-slate-500 tracking-widest">Surat Keluar</div>
+
+            <button onclick="switchTab('keluar')" id="nav-keluar" class="w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-slate-800 text-slate-400 hover:text-slate-200 nav-btn">
+                <div class="flex-shrink-0"><i data-lucide="send" class="w-5 h-5"></i></div>
+                <span class="text-sm font-semibold nav-label">Surat Keluar</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 ml-auto opacity-0 nav-chevron"></i>
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800">
+            <div class="flex items-center space-x-3 p-2 bg-slate-800/50 rounded-xl">
+                <div id="user-avatar" class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white">??</div>
+                <div class="overflow-hidden nav-label">
+                    <p id="user-id" class="text-[10px] font-bold text-white truncate">Menyambung...</p>
+                    <p class="text-[8px] text-green-500 flex items-center">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></span> Terhubung
+                    </p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" class="flex-1 transition-all duration-300 ml-64 p-4 md:p-8 w-full">
+        <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 id="page-title" class="text-2xl font-black text-slate-800">Ringkasan Eksekutif</h1>
+                <p class="text-slate-500 text-sm">Pangkalan data aktif: <span id="app-id-display">Memuatkan...</span></p>
+            </div>
+            <button onclick="document.getElementById('add-modal').classList.remove('hide')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-blue-200 flex items-center transition-all active:scale-95">
+                <i data-lucide="plus" class="w-4 h-4 mr-2"></i> Daftar Surat Baru
+            </button>
+        </header>
+
+        <!-- View: Dashboard -->
+        <div id="view-dashboard" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3 rounded-xl bg-blue-50 text-blue-600"><i data-lucide="mail-warning"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Surat Jabatan</p>
+                        <h3 id="stat-jabatan" class="text-2xl font-black text-slate-800 leading-tight">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3 rounded-xl bg-indigo-50 text-indigo-600"><i data-lucide="school"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Surat Sekolah</p>
+                        <h3 id="stat-sekolah" class="text-2xl font-black text-slate-800 leading-tight">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3 rounded-xl bg-green-50 text-green-600"><i data-lucide="send"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Surat Keluar</p>
+                        <h3 id="stat-keluar" class="text-2xl font-black text-slate-800 leading-tight">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center space-x-4">
+                    <div class="p-3 rounded-xl bg-red-50 text-red-600"><i data-lucide="alert-circle"></i></div>
+                    <div>
+                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">Tindakan Segera</p>
+                        <h3 id="stat-urgent" class="text-2xl font-black text-slate-800 leading-tight">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-4 flex items-center">
+                        <i data-lucide="clock" class="w-4 h-4 mr-2 text-amber-500"></i> Baru Diterima
+                    </h4>
+                    <div id="recent-masuk" class="space-y-3">
+                        <p class="text-sm text-slate-400">Memuatkan data...</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl border border-slate-100">
+                    <h4 class="font-bold text-slate-800 mb-4 flex items-center">
+                        <i data-lucide="check-circle-2" class="w-4 h-4 mr-2 text-green-500"></i> Aktiviti Keluar
+                    </h4>
+                    <div id="recent-keluar" class="space-y-3">
+                        <p class="text-sm text-slate-400">Memuatkan data...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View: Table -->
+        <div id="view-table" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hide">
+            <div class="p-4 bg-slate-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="relative flex-1 max-w-md">
+                    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+                    <input type="text" id="search-input" placeholder="Cari rujukan/perkara..." class="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm w-full outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <select id="filter-sektor" class="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none">
+                    <option value="Semua Sektor">Semua Sektor</option>
+                    <option value="Sektor Pengurusan Sekolah">Sektor Pengurusan Sekolah</option>
+                    <option value="Sektor Pembangunan Murid">Sektor Pembangunan Murid</option>
+                    <option value="Sektor Pengurusan">Sektor Pengurusan</option>
+                    <option value="Sektor Perancangan">Sektor Perancangan</option>
+                    <option value="Unit Kewangan, Infrastruktur & Perolehan">Unit Kewangan, Infrastruktur & Perolehan</option>
+                </select>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 text-slate-500 font-bold border-b">
+                        <tr>
+                            <th class="px-6 py-4">Bil/Tarikh</th>
+                            <th class="px-6 py-4">Maklumat</th>
+                            <th class="px-6 py-4">Penerima/Sektor</th>
+                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100">
+                        <!-- Data will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form -->
+    <div id="add-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hide">
+        <div class="bg-white rounded-3xl w-full max-w-lg shadow-2xl modal-animate">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-xl font-black text-slate-800">Daftar Surat Baru</h3>
+                <button onclick="document.getElementById('add-modal').classList.add('hide')" class="p-2 hover:bg-slate-100 rounded-full">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="add-form" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Jenis Surat</label>
+                        <select id="input-type" class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="jabatan">Masuk: Jabatan</option>
+                            <option value="sekolah">Masuk: Sekolah</option>
+                            <option value="keluar">Surat Keluar</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Bil / Kod</label>
+                        <input id="input-bil" type="text" required class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Cth: 4056" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Tarikh</label>
+                        <input id="input-tarikh" type="date" required class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Status Awal</label>
+                        <select id="input-status" class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="Belum diminit">Belum diminit</option>
+                            <option value="Dalam proses">Dalam proses</option>
+                            <option value="Sudah diminit">Sudah diminit</option>
+                            <option value="Dihantar">Dihantar</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label id="label-daripada" class="block text-xs font-bold text-slate-500 uppercase mb-1">Daripada / Kepada</label>
+                    <input id="input-pihak" class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nama Agensi / Sekolah / Penerima" />
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">No. Rujukan</label>
+                    <input id="input-rujukan" required class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Cth: JPNSW.100-6/1/25" />
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Perkara / Tajuk</label>
+                    <textarea id="input-perkara" required rows="2" class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Tajuk penuh surat..."></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Sektor Terlibat</label>
+                    <select id="input-sektor" class="w-full px-3 py-2 bg-slate-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="Sektor Pengurusan Sekolah">Sektor Pengurusan Sekolah</option>
+                        <option value="Sektor Pembangunan Murid">Sektor Pembangunan Murid</option>
+                        <option value="Sektor Pengurusan">Sektor Pengurusan</option>
+                        <option value="Sektor Perancangan">Sektor Perancangan</option>
+                        <option value="Unit Kewangan, Infrastruktur & Perolehan">Unit Kewangan, Infrastruktur & Perolehan</option>
+                    </select>
+                </div>
+
+                <div class="pt-4 flex space-x-3">
+                    <button type="button" onclick="document.getElementById('add-modal').classList.add('hide')" class="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition-all">Batal</button>
+                    <button id="submit-btn" type="submit" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-200 transition-all active:scale-95">Simpan Rekod</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global State
+        window.activeTab = 'dashboard';
+        window.dataJabatan = [];
+        window.dataSekolah = [];
+        window.dataKeluar = [];
+        window.currentUser = null;
+        
+        // Environment Config
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ped-system-default';
+        document.getElementById('app-id-display').innerText = appId;
+
+        // Initialize Firebase
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch(e) {
+            console.error("Firebase init failed", e);
+        }
+
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Authentication Setup
+        if(auth) {
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                } catch (err) {
+                    console.error("Auth Error:", err);
+                }
+            };
+            initAuth();
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    window.currentUser = user;
+                    document.getElementById('user-id').innerText = `ID: ${user.uid}`;
+                    document.getElementById('user-avatar').innerText = user.uid.substring(0, 2).toUpperCase();
+                    setupFirestoreListeners(user);
+                }
+            });
+        }
+
+        // Setup Listeners
+        function setupFirestoreListeners(user) {
+            // Jabatan
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'suratMasukJabatan'), (snapshot) => {
+                window.dataJabatan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                refreshUI();
+            }, (err) => console.error(err));
+
+            // Sekolah
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'suratMasukSekolah'), (snapshot) => {
+                window.dataSekolah = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                refreshUI();
+            }, (err) => console.error(err));
+
+            // Keluar
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'suratKeluar'), (snapshot) => {
+                window.dataKeluar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                refreshUI();
+            }, (err) => console.error(err));
+        }
+
+        // UI Refresh Logic
+        window.refreshUI = function() {
+            if(window.activeTab === 'dashboard') {
+                updateDashboard();
+            } else {
+                updateTable();
+            }
+        };
+
+        function getStatusBadge(status) {
+            const styles = {
+                "Belum diminit": "bg-red-100 text-red-700 border-red-200",
+                "Dalam proses": "bg-amber-100 text-amber-700 border-amber-200",
+                "Selesai": "bg-green-100 text-green-700 border-green-200",
+                "Sudah diminit": "bg-blue-100 text-blue-700 border-blue-200",
+                "Dihantar": "bg-purple-100 text-purple-700 border-purple-200"
+            };
+            const cssClass = styles[status] || "bg-gray-100 text-gray-700";
+            return `<span class="px-2 py-1 rounded-full text-[10px] font-bold border ${cssClass}">${status}</span>`;
+        }
+
+        function updateDashboard() {
+            document.getElementById('stat-jabatan').innerText = window.dataJabatan.length;
+            document.getElementById('stat-sekolah').innerText = window.dataSekolah.length;
+            document.getElementById('stat-keluar').innerText = window.dataKeluar.length;
+            
+            const urgentCount = window.dataJabatan.filter(d => d.status === 'Belum diminit').length;
+            document.getElementById('stat-urgent').innerText = urgentCount;
+
+            // Recent Masuk
+            const recentMasukContainer = document.getElementById('recent-masuk');
+            const masukData = [...window.dataJabatan, ...window.dataSekolah]
+                                .sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+                                .slice(0, 5);
+            
+            recentMasukContainer.innerHTML = masukData.map(item => `
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <p class="text-[10px] text-slate-400 font-bold">${item.noRujukan || '-'}</p>
+                    <p class="text-xs font-semibold text-slate-700 line-clamp-1">${item.perkara}</p>
+                </div>
+            `).join('') || '<p class="text-sm text-slate-400">Tiada data terkini</p>';
+
+            // Recent Keluar
+            const recentKeluarContainer = document.getElementById('recent-keluar');
+            const keluarData = [...window.dataKeluar]
+                                .sort((a,b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+                                .slice(0, 5);
+
+            recentKeluarContainer.innerHTML = keluarData.map(item => `
+                <div class="flex items-center space-x-3 text-xs">
+                    <div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    <span class="text-slate-500 min-w-[70px]">${item.tarikh}</span>
+                    <span class="font-medium text-slate-700 line-clamp-1">${item.perkara}</span>
+                </div>
+            `).join('') || '<p class="text-sm text-slate-400">Tiada aktiviti keluar</p>';
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('table-body');
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filterSektor = document.getElementById('filter-sektor').value;
+
+            let source = [];
+            if(window.activeTab === 'jabatan') source = window.dataJabatan;
+            else if(window.activeTab === 'sekolah') source = window.dataSekolah;
+            else if(window.activeTab === 'keluar') source = window.dataKeluar;
+
+            const filtered = source.filter(item => {
+                const matchSearch = (item.perkara || '').toLowerCase().includes(searchTerm) || 
+                                    (item.noRujukan || '').toLowerCase().includes(searchTerm);
+                const itemSektor = item.sektor || item.sektorAsal;
+                const matchSektor = filterSektor === 'Semua Sektor' || itemSektor === filterSektor;
+                return matchSearch && matchSektor;
+            }).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-12 text-center text-slate-400">Tiada rekod ditemui</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(item => `
+                <tr class="hover:bg-blue-50/30 transition-colors">
+                    <td class="px-6 py-4">
+                        <p class="font-bold text-slate-700">#${item.bil}</p>
+                        <p class="text-[10px] text-slate-400">${item.tarikh}</p>
+                    </td>
+                    <td class="px-6 py-4 max-w-xs">
+                        <p class="text-[10px] text-blue-600 font-bold truncate">${item.noRujukan}</p>
+                        <p class="font-medium text-slate-700 line-clamp-1">${item.perkara}</p>
+                    </td>
+                    <td class="px-6 py-4">
+                        <p class="font-bold text-slate-700">${item.daripada || item.sekolah || item.kepada || '-'}</p>
+                        <p class="text-[10px] text-slate-400 uppercase tracking-tight">${item.sektor || item.sektorAsal || '-'}</p>
+                    </td>
+                    <td class="px-6 py-4">${getStatusBadge(item.status)}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button class="p-2 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-all">
+                            <i data-lucide="more-horizontal" class="w-4 h-4 text-slate-400"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        // Add Data Form Submit
+        document.getElementById('add-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(!window.currentUser) return;
+
+            const btn = document.getElementById('submit-btn');
+            btn.innerText = "Menyimpan...";
+            btn.disabled = true;
+
+            const type = document.getElementById('input-type').value;
+            const newDoc = {
+                bil: document.getElementById('input-bil').value,
+                tarikh: document.getElementById('input-tarikh').value,
+                status: document.getElementById('input-status').value,
+                noRujukan: document.getElementById('input-rujukan').value,
+                perkara: document.getElementById('input-perkara').value,
+                createdAt: serverTimestamp(),
+                createdBy: window.currentUser.uid
+            };
+
+            const pihakVal = document.getElementById('input-pihak').value;
+            const sektorVal = document.getElementById('input-sektor').value;
+
+            try {
+                if (type === 'jabatan') {
+                    newDoc.daripada = pihakVal;
+                    newDoc.sektor = sektorVal;
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'suratMasukJabatan'), newDoc);
+                } else if (type === 'sekolah') {
+                    newDoc.sekolah = pihakVal;
+                    newDoc.sektor = sektorVal;
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'suratMasukSekolah'), newDoc);
+                } else {
+                    newDoc.kepada = pihakVal;
+                    newDoc.sektorAsal = sektorVal;
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'suratKeluar'), newDoc);
+                }
+                
+                document.getElementById('add-modal').classList.add('hide');
+                document.getElementById('add-form').reset();
+            } catch(err) {
+                console.error("Ralat menyimpan data: ", err);
+                alert("Gagal menyimpan data.");
+            } finally {
+                btn.innerText = "Simpan Rekod";
+                btn.disabled = false;
+            }
+        });
+
+        // Search and Filter Listeners
+        document.getElementById('search-input').addEventListener('input', window.refreshUI);
+        document.getElementById('filter-sektor').addEventListener('change', window.refreshUI);
+
+    </script>
+
+    <!-- UI Interaction Scripts -->
+    <script>
+        // Sidebar Toggle Logic
+        let isSidebarOpen = true;
+        document.getElementById('toggle-sidebar').addEventListener('click', () => {
+            isSidebarOpen = !isSidebarOpen;
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const logo = document.getElementById('sidebar-logo');
+            const labels = document.querySelectorAll('.nav-label');
+            const chevrons = document.querySelectorAll('.nav-chevron');
+            const dividers = document.querySelectorAll('.nav-divider');
+            const icon = document.getElementById('sidebar-icon');
+            
+            if (isSidebarOpen) {
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-64');
+                mainContent.classList.remove('ml-20');
+                mainContent.classList.add('ml-64');
+                logo.classList.remove('opacity-0', 'w-0', 'overflow-hidden');
+                labels.forEach(l => l.classList.remove('hidden'));
+                chevrons.forEach(c => c.classList.remove('hidden'));
+                dividers.forEach(d => { d.classList.remove('text-center', 'text-[8px]'); d.innerText = d.dataset.full; });
+                icon.setAttribute('data-lucide', 'x');
+            } else {
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-20');
+                mainContent.classList.remove('ml-64');
+                mainContent.classList.add('ml-20');
+                logo.classList.add('opacity-0', 'w-0', 'overflow-hidden');
+                labels.forEach(l => l.classList.add('hidden'));
+                chevrons.forEach(c => c.classList.add('hidden'));
+                dividers.forEach(d => { d.dataset.full = d.innerText; d.innerText = '•••'; d.classList.add('text-center', 'text-[8px]'); });
+                icon.setAttribute('data-lucide', 'menu');
+            }
+            lucide.createIcons();
+        });
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            window.activeTab = tabId;
+            
+            // Update active styling on navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-900/20');
+                btn.classList.add('hover:bg-slate-800', 'text-slate-400', 'hover:text-slate-200');
+                btn.querySelector('.nav-chevron').classList.replace('opacity-50', 'opacity-0');
+            });
+            
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            activeBtn.classList.remove('hover:bg-slate-800', 'text-slate-400', 'hover:text-slate-200');
+            activeBtn.classList.add('bg-blue-600', 'text-white', 'shadow-lg', 'shadow-blue-900/20');
+            activeBtn.querySelector('.nav-chevron').classList.replace('opacity-0', 'opacity-50');
+
+            // Update Views
+            const viewDashboard = document.getElementById('view-dashboard');
+            const viewTable = document.getElementById('view-table');
+            const title = document.getElementById('page-title');
+
+            if (tabId === 'dashboard') {
+                viewDashboard.classList.remove('hide');
+                viewTable.classList.add('hide');
+                title.innerText = "Ringkasan Eksekutif";
+            } else {
+                viewDashboard.classList.add('hide');
+                viewTable.classList.remove('hide');
+                
+                if (tabId === 'jabatan') title.innerText = "Surat Masuk: Jabatan & Agensi Luar";
+                if (tabId === 'sekolah') title.innerText = "Surat Masuk: Sekolah";
+                if (tabId === 'keluar') title.innerText = "Rekod Surat Keluar";
+                
+                // Clear search when switching tabs
+                document.getElementById('search-input').value = '';
+                document.getElementById('filter-sektor').value = 'Semua Sektor';
+            }
+            
+            // Trigger refresh
+            if(window.refreshUI) window.refreshUI();
+        }
+    </script>
+</body>
+</html>
