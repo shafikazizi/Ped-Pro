@@ -262,6 +262,12 @@
         </div>
     </div>
 
+    <!-- Toast Notification (Added for feedback) -->
+    <div id="toast" class="fixed bottom-4 right-4 z-[200] transform transition-all duration-300 translate-y-20 opacity-0 flex items-center space-x-3 px-4 py-3 rounded-xl shadow-2xl text-white font-semibold text-sm">
+        <i id="toast-icon" data-lucide="info" class="w-5 h-5"></i>
+        <span id="toast-message">Mesej</span>
+    </div>
+
     <!-- Firebase Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -293,6 +299,29 @@
         // Initialize Icons
         lucide.createIcons();
 
+        // Notification System
+        window.showToast = function(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-message');
+            const iconEl = document.getElementById('toast-icon');
+            
+            msgEl.innerText = message;
+            
+            if(type === 'success') {
+                toast.className = "fixed bottom-4 right-4 z-[200] transform transition-all duration-300 flex items-center space-x-3 px-4 py-3 rounded-xl shadow-2xl text-white font-semibold text-sm bg-green-600 translate-y-0 opacity-100";
+                iconEl.setAttribute('data-lucide', 'check-circle');
+            } else {
+                toast.className = "fixed bottom-4 right-4 z-[200] transform transition-all duration-300 flex items-center space-x-3 px-4 py-3 rounded-xl shadow-2xl text-white font-semibold text-sm bg-red-600 translate-y-0 opacity-100";
+                iconEl.setAttribute('data-lucide', 'alert-circle');
+            }
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
         // Authentication Setup
         if(auth) {
             const initAuth = async () => {
@@ -311,7 +340,7 @@
             onAuthStateChanged(auth, (user) => {
                 if (user) {
                     window.currentUser = user;
-                    document.getElementById('user-id').innerText = `ID: ${user.uid}`;
+                    document.getElementById('user-id').innerText = `ID: ${user.uid.substring(0,8)}...`;
                     document.getElementById('user-avatar').innerText = user.uid.substring(0, 2).toUpperCase();
                     setupFirestoreListeners(user);
                 }
@@ -448,7 +477,11 @@
         // Add Data Form Submit
         document.getElementById('add-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if(!window.currentUser) return;
+            
+            if(!window.currentUser) {
+                window.showToast("Sistem sedang mengesahkan pengguna atau ralat rangkaian berlaku. Sila tunggu.", "error");
+                return;
+            }
 
             const btn = document.getElementById('submit-btn');
             btn.innerText = "Menyimpan...";
@@ -485,9 +518,10 @@
                 
                 document.getElementById('add-modal').classList.add('hide');
                 document.getElementById('add-form').reset();
+                window.showToast("Rekod berjaya disimpan!", "success");
             } catch(err) {
                 console.error("Ralat menyimpan data: ", err);
-                alert("Gagal menyimpan data.");
+                window.showToast("Gagal menyimpan pangkalan data. Anda mungkin tiada akses.", "error");
             } finally {
                 btn.innerText = "Simpan Rekod";
                 btn.disabled = false;
